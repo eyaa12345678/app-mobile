@@ -18,9 +18,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         return toUserDetails(user);
     }
 
-    public UserDetails loadUserById(Long id) throws UsernameNotFoundException {
+    public UserDetails loadUserById(Long id, long tokenVersion) throws UsernameNotFoundException {
         var user = userRepository.findById(id)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        long currentVersion = user.getTokenVersion() == null ? 0L : user.getTokenVersion();
+        if (currentVersion != tokenVersion || user.getMergedIntoId() != null || user.isPasswordResetRequired()) {
+            throw new UsernameNotFoundException("Session expired");
+        }
         return toUserDetails(user);
     }
 

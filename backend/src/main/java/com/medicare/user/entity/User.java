@@ -1,10 +1,13 @@
 package com.medicare.user.entity;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDate;
+import java.time.Instant;
 import lombok.*;
 
 @Entity
+@JsonIgnoreProperties({"password", "tokenVersion", "resetCodeHash", "resetCodeExpiresAt", "resetCodeRequestedAt", "resetCodeAttempts"})
 @Table(name = "users")
 @Getter
 @Setter
@@ -24,6 +27,26 @@ public class User {
 
     @Column(nullable = false)
     private String password;
+
+    @Column(unique = true, length = 40)
+    private String username;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean emailVerified;
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean mfaEnabled;
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean passwordResetRequired;
+    private Long mergedIntoId;
+
+    // Nullable for existing accounts; a missing version is treated as zero.
+    private Long tokenVersion;
+
+    private String resetCodeHash;
+    private Instant resetCodeExpiresAt;
+    private Instant resetCodeRequestedAt;
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int resetCodeAttempts;
 
     @Column(length = 30)
     private String phoneNumber;

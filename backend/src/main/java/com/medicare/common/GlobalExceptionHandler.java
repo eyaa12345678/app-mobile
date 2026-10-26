@@ -38,9 +38,24 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Validation failed", fields);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicate(org.springframework.dao.DataIntegrityViolationException ex) {
+        return build(HttpStatus.CONFLICT, "IDENTIFIER_ALREADY_USED", null);
+    }
+
+    @ExceptionHandler(org.springframework.dao.IncorrectResultSizeDataAccessException.class)
+    public ResponseEntity<ErrorResponse> handleAmbiguousIdentity(org.springframework.dao.IncorrectResultSizeDataAccessException ex) {
+        return build(HttpStatus.CONFLICT, "AMBIGUOUS_IDENTITY", null);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         return build(HttpStatus.FORBIDDEN, "Access denied", null);
+    }
+
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        return build(HttpStatus.BAD_REQUEST, "Validation failed", null);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

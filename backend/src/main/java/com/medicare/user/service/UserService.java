@@ -1,10 +1,14 @@
 package com.medicare.user.service;
 
 import com.medicare.common.ApiException;
+import com.medicare.auth.service.PasswordPolicy;
+import com.medicare.security.account.*;
+import com.medicare.auth.dto.AuthDtos;
 import com.medicare.user.dto.UserDtos;
 import com.medicare.user.entity.User;
 import com.medicare.user.repository.UserRepository;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -17,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordLifecycle passwords;
+    private final AccountAccess accounts;
+    private final SessionIssuer sessions;
 
     @Transactional(readOnly = true)
     public UserDtos.UserResponse currentProfile(Authentication authentication) {
@@ -27,10 +34,15 @@ public class UserService {
     public UserDtos.UserResponse updateProfile(
             Authentication authentication,
             UserDtos.UpdateProfileRequest request) {
-        User user = currentUser(authentication);
+        User user = accounts.lock(currentUser(authentication).getId());
         String email = normalizeEmail(request.email());
-        if (!user.getEmail().equals(email) && userRepository.existsByEmailAndIdNot(email, user.getId())) {
+        if (!user.getEmail().equals(email) && userRepository.existsByEmailIgnoreCaseAndIdNot(email, user.getId())) {
             throw new ApiException(HttpStatus.CONFLICT, "Email already exists");
+        }
+
+        if (!user.getEmail().equals(email)) {
+            // A profile edit must never replace the contact that receives all authentication codes.
+            throw new ApiException(HttpStatus.CONFLICT, "EMAIL_CHANGE_REQUIRES_VERIFICATION");
         }
 
         user.setFullName(request.fullName().trim());
@@ -43,40 +55,40 @@ public class UserService {
     }
 
     @Transactional
-    public void changePassword(Authentication authentication, UserDtos.ChangePasswordRequest request) {
-        User user = currentUser(authentication);
+    public AuthDtos.AuthResponse changePassword(Authentication authentication, UserDtos.ChangePasswordRequest request) {
+        PasswordPolicy.validate(request.newPassword());
+        User user = accounts.lock(currentUser(authentication).getId());
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
         }
-        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        passwords.replace(user, request.newPassword());
         userRepository.save(user);
+        return sessions.issue(user);
     }
 
     @Transactional(readOnly = true)
     public List<UserDtos.UserResponse> findAll() {
         return userRepository.findAll().stream()
+                .filter(user -> user.getMergedIntoId() == null)
                 .map(UserDtos.UserResponse::from)
                 .toList();
     }
 
     @Transactional
     public UserDtos.UserResponse updateRole(Long id, UserDtos.UpdateRoleRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
-        user.setRole(request.role());
-        return UserDtos.UserResponse.from(userRepository.save(user));
+        throw new ApiException(HttpStatus.CONFLICT, "USE_ROLE_REQUEST_WORKFLOW");
     }
 
     private User currentUser(Authentication authentication) {
         if (authentication == null || authentication.getName() == null) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
-        return userRepository.findByEmail(authentication.getName())
+        return userRepository.findByEmailIgnoreCase(authentication.getName())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authentication required"));
     }
 
     private String normalizeEmail(String email) {
-        return email.trim().toLowerCase();
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private String trimToNull(String value) {

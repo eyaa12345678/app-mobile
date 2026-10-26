@@ -1,6 +1,7 @@
 package com.medicare.security;
 
 import jakarta.servlet.FilterChain;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.*;
 import lombok.RequiredArgsConstructor;
@@ -29,12 +30,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 if (jwtService.isValid(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
                     Long userId = jwtService.extractUserId(token);
-                    UserDetails details = userDetailsService.loadUserById(userId);
+                    UserDetails details = userDetailsService.loadUserById(userId, jwtService.extractTokenVersion(token));
                     var authentication = new UsernamePasswordAuthenticationToken(
                             details, null, details.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
-            } catch (UsernameNotFoundException ex) {
+            } catch (JwtException | IllegalArgumentException | UsernameNotFoundException ex) {
                 SecurityContextHolder.clearContext();
             }
         }

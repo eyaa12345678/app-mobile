@@ -32,7 +32,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       _fullName.text = user.fullName;
       _email.text = user.email;
       _phoneNumber.text = user.phoneNumber ?? '';
-      _birthDate.text = user.birthDate?.toIso8601String().split('T').first ?? '';
+      _birthDate.text =
+          user.birthDate?.toIso8601String().split('T').first ?? '';
       _bio.text = user.bio ?? '';
       _profilePhotoUrl.text = user.profilePhotoUrl ?? '';
       _initialized = true;
@@ -127,9 +128,13 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _email,
+                readOnly: true,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Email vérifié du compte',
+                  helperText:
+                      'Cette identité est protégée et ne se modifie pas depuis le profil.',
+                  helperMaxLines: 3,
                   prefixIcon: Icon(Icons.mail_outline),
                 ),
                 validator: (value) {

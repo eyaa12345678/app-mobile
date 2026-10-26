@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_error.dart';
 import '../auth/authentication_state.dart';
+import '../auth/auth_validation.dart';
+import '../auth/widgets/auth_form_widgets.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -18,22 +20,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _loading = false;
 
   Future<void> _changePassword() async {
-    if (!_formKey.currentState!.validate()) {
+    if (_loading || !_formKey.currentState!.validate()) {
       return;
     }
 
+    FocusScope.of(context).unfocus();
     setState(() => _loading = true);
     try {
       await ref.read(authenticationStateProvider.notifier).changePassword(
             _currentPassword.text,
             _newPassword.text,
           );
+      if (!mounted) return;
       _currentPassword.clear();
       _newPassword.clear();
       _confirmPassword.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mot de passe mis a jour')),
+          const SnackBar(content: Text('Mot de passe mis à jour')),
         );
       }
     } catch (e) {
@@ -62,16 +66,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final user = ref.watch(authenticationStateProvider).valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Parametres')),
+      appBar: AppBar(title: const Text('Paramètres')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.verified_user_outlined),
-            title: const Text('Role'),
-            subtitle: Text(user?.role ?? '-'),
+            title: const Text('Rôle'),
+            subtitle: Text(user?.roleLabel ?? '-'),
           ),
+          Card(
+              child: ListTile(
+                  leading: const Icon(Icons.security_outlined),
+                  title: const Text('Sécurité et accès'),
+                  subtitle: const Text(
+                      'Double vérification, récupération, rôles et rapprochement de comptes'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.pushNamed(context, '/security'))),
           const Divider(height: 32),
           const Text(
             'Changer le mot de passe',
@@ -82,49 +94,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             key: _formKey,
             child: Column(
               children: [
-                TextFormField(
+                AuthPasswordField(
                   controller: _currentPassword,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Mot de passe actuel',
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Mot de passe actuel requis';
-                    }
-                    return null;
-                  },
+                  label: 'Mot de passe actuel',
+                  enabled: !_loading,
+                  textInputAction: TextInputAction.next,
+                  validator: AuthValidation.requiredPassword,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
+                AuthPasswordField(
                   controller: _newPassword,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Nouveau mot de passe',
-                    prefixIcon: Icon(Icons.lock_reset),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.length < 6) {
-                      return '6 caracteres minimum';
-                    }
-                    return null;
-                  },
+                  label: 'Nouveau mot de passe',
+                  enabled: !_loading,
+                  newPassword: true,
+                  textInputAction: TextInputAction.next,
+                  validator: AuthValidation.newPassword,
                 ),
+                PasswordStrengthIndicator(controller: _newPassword),
                 const SizedBox(height: 12),
-                TextFormField(
+                AuthPasswordField(
                   controller: _confirmPassword,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Confirmer le nouveau mot de passe',
-                    prefixIcon: Icon(Icons.lock_reset),
-                  ),
-                  validator: (value) {
-                    if (value != _newPassword.text) {
-                      return 'Les mots de passe ne correspondent pas';
-                    }
-                    return null;
-                  },
+                  label: 'Confirmer le nouveau mot de passe',
+                  enabled: !_loading,
+                  newPassword: true,
+                  validator: (value) =>
+                      AuthValidation.confirmPassword(value, _newPassword.text),
+                  onSubmitted: (_) => _changePassword(),
                 ),
               ],
             ),
@@ -138,18 +133,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.save_outlined),
-            label: Text(_loading ? 'Mise a jour...' : 'Mettre a jour'),
+            label: Text(_loading ? 'Mise à jour…' : 'Mettre à jour'),
           ),
           const SizedBox(height: 24),
           OutlinedButton.icon(
-            onPressed: () async {
-              await ref.read(authenticationStateProvider.notifier).logout();
-              if (context.mounted) {
-                Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
-              }
-            },
+            onPressed: _loading
+                ? null
+                : () async {
+                    await ref
+                        .read(authenticationStateProvider.notifier)
+                        .logout();
+                    if (context.mounted) {
+                      Navigator.pushNamedAndRemoveUntil(
+                          context, '/login', (_) => false);
+                    }
+                  },
             icon: const Icon(Icons.logout),
-            label: const Text('Deconnexion'),
+            label: const Text('Déconnexion'),
           ),
         ],
       ),

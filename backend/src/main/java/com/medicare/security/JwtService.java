@@ -29,6 +29,7 @@ public class JwtService {
                 .claim("userId", user.getId())
                 .claim("email", user.getEmail())
                 .claim("role", user.getRole().name())
+                .claim("version", user.getTokenVersion() == null ? 0L : user.getTokenVersion())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expirationMs))
                 .signWith(key)
@@ -48,6 +49,12 @@ public class JwtService {
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public long extractTokenVersion(String token) {
+        Number version = Jwts.parser().verifyWith(key).build()
+                .parseSignedClaims(token).getPayload().get("version", Number.class);
+        return version == null ? 0L : version.longValue();
     }
 
     public long getExpirationMs() {

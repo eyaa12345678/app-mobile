@@ -19,7 +19,11 @@ public final class UserDtos {
             LocalDate birthDate,
             String bio,
             String profilePhotoUrl,
-            Role role
+            Role role,
+            String username,
+            boolean emailVerified,
+            boolean mfaEnabled,
+            boolean passwordResetRequired
     ) {
         public static UserResponse from(User user) {
             return new UserResponse(
@@ -30,7 +34,8 @@ public final class UserDtos {
                     user.getBirthDate(),
                     user.getBio(),
                     user.getProfilePhotoUrl(),
-                    user.getRole());
+                    user.getRole(), user.getUsername(), user.isEmailVerified(),
+                    user.isMfaEnabled(), user.isPasswordResetRequired());
         }
     }
 

@@ -26,7 +26,8 @@ class ProfilePage extends ConsumerWidget {
             ? const Center(child: Text('Aucun utilisateur connecte.'))
             : _ProfileContent(user: user),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(child: Text('Impossible de charger le profil.')),
+        error: (_, __) =>
+            const Center(child: Text('Impossible de charger le profil.')),
       ),
     );
   }
@@ -51,7 +52,8 @@ class _ProfileContent extends ConsumerWidget {
             child: user.profilePhotoUrl == null
                 ? Text(
                     _initials(user.fullName),
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 26, fontWeight: FontWeight.bold),
                   )
                 : null,
           ),
@@ -64,9 +66,17 @@ class _ProfileContent extends ConsumerWidget {
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
         ),
-        Center(child: Text(user.role)),
+        Center(child: Text(user.roleLabel)),
         const SizedBox(height: 24),
-        _info(Icons.mail_outline, 'Email', user.email),
+        _info(Icons.mail_outline, 'Email',
+            '${user.email} · ${user.emailVerified ? 'Vérifié' : 'À vérifier'}'),
+        if (user.username != null)
+          _info(Icons.badge_outlined, 'Identifiant', user.username!),
+        ListTile(
+            leading: const Icon(Icons.security_outlined),
+            title: const Text('Sécurité et accès'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.pushNamed(context, '/security')),
         _info(Icons.phone_outlined, 'Telephone', user.phoneNumber ?? '-'),
         _info(Icons.cake_outlined, 'Date de naissance', _date(user.birthDate)),
         _info(Icons.notes_outlined, 'Bio', user.bio ?? '-'),
@@ -87,7 +97,8 @@ class _ProfileContent extends ConsumerWidget {
           onPressed: () async {
             await ref.read(authenticationStateProvider.notifier).logout();
             if (context.mounted) {
-              Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/login', (_) => false);
             }
           },
           icon: const Icon(Icons.logout),
@@ -114,7 +125,8 @@ class _ProfileContent extends ConsumerWidget {
   }
 
   String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
+    final parts =
+        name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty);
     final letters = parts.take(2).map((part) => part[0].toUpperCase()).join();
     return letters.isEmpty ? 'U' : letters;
   }
